@@ -17,7 +17,7 @@ void loop(){
 
 void receiveQuad(int byteCount){
 	while(Wire.available()){
-		currentQuad = wire.Read();
+		currentQuad = Wire.read();
 	}
 	Serial.println(currentQuad);
 }
