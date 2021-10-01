@@ -13,7 +13,7 @@ def sendQuad(quadNum):
     quadNum = int(quadNum)
     if quadNum = 1 or 2 or 3 or 4: # marker is in the top left corner
         try:
-            SMBus.write_i2c_byte_data(ARDUINO_ADDRESS, 0, quadNum)
+            SMBus.write_byte_data(ARDUINO_ADDRESS, 0, quadNum)
         except:
             print("I2C connection failed, please check connection")
         lcd.color = [0, 100, 0]
