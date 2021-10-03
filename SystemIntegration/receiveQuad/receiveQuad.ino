@@ -2,7 +2,7 @@
 
 #define SLAVE_ADDRESS 0x04
 
-byte currentQuad;
+double desiredAngle;
 
 void setup(){
 	Serial.begin(115200);
@@ -16,8 +16,14 @@ void loop(){
 }
 
 void receiveQuad(int byteCount){
+  byte currentQuad;
 	while(Wire.available()){
 		currentQuad = Wire.read();
 	}
+  Serial.print("Quadrant: ");
 	Serial.println(currentQuad);
+  desiredAngle = ((double(currentQuad) - 1.0)*(PI/2.0));
+  Serial.print("Desired angle: ");
+  Serial.print(desiredAngle);
+  Serial.println(" radians");
 }
