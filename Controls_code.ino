@@ -1,7 +1,5 @@
 #include <Wire.h>
 
-
-double desiredAngle =0.0;
 #define SLAVE_ADDRESS 0x04
 #define PI 3.1415926535897932384626433832795
 #define MV1 9
@@ -39,8 +37,8 @@ float error = 0;
 float error_past = 0;
 
 //These are all value sent and recieved values (i2c)
-String number = "";
-float setPosition = PI;
+int number;
+float setPosition = 0.0;
 bool stringComplete = false;
 
 void setup() {
@@ -80,13 +78,13 @@ void setup() {
 void loop() {
   
   if (stringComplete) {
-    if (number == "1") {
+    if (number == 1) {
       setPosition = 2*PI;
-    } else if (number == "2") {
+    } else if (number == 2) {
       setPosition = PI/2;
-    } else if (number == "3") {
+    } else if (number == 3) {
       setPosition = PI;
-    } else if (number == "4") {
+    } else if (number == 4) {
       setPosition = 3*PI/2;
     }
     sendData();
@@ -188,9 +186,11 @@ void receiveQuad(int byteCount){
   while(Wire.available()){
     currentQuad = Wire.read();
   }
+  number = int(currentQuad);
+  stringComplete = true;
   //Serial.print("Quadrant: ");
   //Serial.println(currentQuad);
-  setPosition = ((double(currentQuad) - 1.0)*(PI/2.0));
+//   setPosition = ((float(currentQuad) - 1.0)*(PI/2.0));
   //Serial.print("Desired angle: ");
   Serial.print(setPosition);
   Serial.println(" radians");
