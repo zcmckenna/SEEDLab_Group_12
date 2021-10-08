@@ -63,7 +63,7 @@ void PIControl(){
   I = I + (Ts/10000)*error; // Take the integral term as the previous integral plus the product of the error term and loop time (converted from us -> s)
   float u = K*(Kp*error + Ki*I*error); // Set the PWM motor output as the product of the P/I gains and error and multiply by the overall gain
   
-  u = constrain(u, -255, 255); // Make sure the output of the PI controller is a valid PWM signal
+  //u = constrain(u, -255, 255); // Make sure the output of the PI controller is a valid PWM signal
 
   if(u > 0) digitalWrite(M1_DIR, HIGH);
   else digitalWrite(M1_DIR, LOW); // If the PI control output is > 0 , turn CCW, otherwise turn CW
@@ -97,4 +97,11 @@ void receiveQuad(int byteCount){
     currentQuad = Wire.read(); // Set the current quad byte to the byte that was sent over I2C
   }
   desiredAngle = ((double(currentQuad) - 1.0)*(PI/2.0)); // Simple equation to convert from quadrant (1,2,3, or 4) to radians (0pi, pi/2, pi, or 3pi/2)
+}
+
+void serialEvent(){
+  while(Serial.available() > 0){
+    int i = Serial.read();
+    desiredAngle = ((double(i) - 1.0)*(PI/2.0));
+  }
 }
