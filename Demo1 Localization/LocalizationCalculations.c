@@ -17,7 +17,7 @@
 #define phiK 0.253733882698412
 #define rhoKp 0.253733882698412
 #define phiKp 0.253733882698412
-#define K 225
+#define K 255
 // #define Ki 0.0161502759705219 // PI control gain values from Simulink simulation
 
 #define d 0.283 //distance between wheels in meters
@@ -250,8 +250,8 @@ void receiveQuad(int byteCount){
 
 void serialEvent(){
   while(Serial.available() > 0){
-    float i = Serial.read();
-    desiredAngle = i;
+    float i = Serial.parseFloat();
+    desiredAngle = i + rotPosition;
     // TODO add code to add current rotation to the new desired rotation
   }
 }
