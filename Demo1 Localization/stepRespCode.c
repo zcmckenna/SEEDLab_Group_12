@@ -8,9 +8,9 @@
 #define M2_PWM 10
 #define MOTOR_EN 4 // Definitions for the pins that correspond to motor control
 
-#define ENC_RA 3 // yellow, pins 3 and 5 for right wheel encoder
+#define ENC_RA 2 // yellow, pins 3 and 5 for right wheel encoder
 #define ENC_RB 5 // white  Definitions for encoder channels and reset buttons
-#define ENC_LA 2 //yellow, pins 2 and 6 for left wheel encoder
+#define ENC_LA 3 //yellow, pins 2 and 6 for left wheel encoder
 #define ENC_LB 6 //white
 
 #define rhoK 0.253733882698412
@@ -37,6 +37,10 @@ long Tc; // Used to keep track of the number of microseconds since last PI contr
 //variables below measured or calculated inside encoder ISRs **************************************************
 int encCountR = 0; // The count of the encoder
 int encCountL = 0;
+long totalCountR = 0;
+long totalCountL = 0;
+long totalCountROld = 0;
+long totalCountLOld = 0;
 float encPositionR = 0.0; // The angle in radians that the encoder is at (0-2pi)
 float encPositionL = 0.0;
 float encPositionOldR = 0.0;
@@ -100,41 +104,40 @@ void setup() {
   pinMode(MOTOR_EN, OUTPUT);
   digitalWrite(MOTOR_EN, HIGH); // Enable motor control
   digitalWrite(M1_DIR, HIGH); 
-  digitalWrite(M2_DIR, HIGH);// Set initial direction to CCW
+  digitalWrite(M2_DIR, LOW);// Set initial direction to CCW
 
   Tc = micros(); // initialize Tc
 
   attachInterrupt(digitalPinToInterrupt(ENC_RA), encoderISR_R, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENC_LA), encoderISR_L, CHANGE);
   
-
-
   Wire.begin(SLAVE_ADDR); // Start listening for I2C
   Wire.onReceive(receiveQuad); // Interrupt handler for I2C input
 }
 
 void loop() {
-   delay(1000);
-   analogWrite(M1_PWM, 26);
-   analogWrite(M2_PWM, 26);
-   float startT = millis();
-   while(true){
-    
+    delay(1000);
+    analogWrite(M1_PWM, 26);
+    analogWrite(M2_PWM, 26);
+    long startT = millis();
+    long timeKeep;
+    while(true){
+        timeKeep = micros();
+        rotVel = r * (angVelR - angVelL) / d;
+        // avgVel = r * (angVelR + angVelL) / 2;
 
-  //rotVel = r * (angVelR - angVelL) / d;
-  avgVel = r * (angVelR + angVelL) / 2;
-
-  //code below was used to check position variables. can comment out
-  Serial.print(millis());
-  Serial.print("\t");  
-  Serial.println(avgVel);
-  if(millis() > (startT + 2000)){
-    break;
-  }
-   }
-   analogWrite(M1_PWM, 0);
-   analogWrite(M2_PWM, 0);
-   while(true);
+    //code below was used to check position variables. can comment out
+        Serial.print(millis());
+        Serial.print("\t");  
+        Serial.println(rotVel);
+        if(millis() > (startT + 2000)){
+            break;
+        }
+        while(micros() < timeKeep + 5000);
+    }
+    analogWrite(M1_PWM, 0);
+    analogWrite(M2_PWM, 0);
+    while(true);
    
 }
 
@@ -174,6 +177,7 @@ void encoderISR_R(){
   timeNewR = micros();
   if(encAStatusR == encBStatusR){ // Since the ISR is invoked by encoder a changing, we can just check if a = b
     encCountR += 2; // Increase count by 2 since the encoder has moved 2 clicks CCW
+    totalCountR +=2;
     if(encCountR == 3202){
       encCountR = 2; // If the encoder is at its max, rollover to 0
       rolloverR += 1;
@@ -181,6 +185,7 @@ void encoderISR_R(){
     
   }else{ // encAStatus != encBStatus
     encCountR -= 2; // Decrease count by 2 since encoder has moved 2 clicks CW
+    totalCountR -= 2;
     if(encCountR == -2) {
       encCountR = 3198; // If encoder is at its minimum, rollover to 3200
       rolloverR -= 1;
@@ -188,10 +193,12 @@ void encoderISR_R(){
     
   }
   encPositionR = (float(encCountR)*2.0*PI)/3200.0; // Convert encoder count to angle in radians
-  angVelR = ((encPositionR - encPositionOldR)*1000000) / (timeNewR - timeOldR);
+  angVelR = (float(totalCountR - totalCountROld)*((2.0*PI)/3200.0)*1000000)/(timeNewR - timeOldR);
+//   angVelR = ((encPositionR - encPositionOldR)*1000000) / (timeNewR - timeOldR);
   v_r = r * angVelR;
   timeOldR = timeNewR;
-  encPositionOldR = encPositionR;
+//   encPositionOldR = encPositionR;
+    totalCountROld = totalCountR;
 }
 
 void encoderISR_L(){
@@ -201,22 +208,28 @@ void encoderISR_L(){
   timeNewL = micros();
   if(encAStatusL == encBStatusL){ // Since the ISR is invoked by encoder a changing, we can just check if a = b
     encCountL -= 2; // Decrease count by 2 since encoder has moved 2 clicks CW
+    totalCountL -= 2;
     if(encCountL == -2){
       encCountL = 3198; // If encoder is at its minimum, rollover to 3200
       rolloverL -= 1;
     }
   }else{ // encAStatus != encBStatus
     encCountL += 2; // Increase count by 2 since the encoder has moved 2 clicks CCW
+    totalCountL += 2;
     if(encCountL == 3202){
       encCountL = 2; // If the encoder is at its max, rollover to 0
       rolloverL += 1;
     }
   }
+  angVelL = (float(totalCountL - totalCountLOld)*((2.0*PI)/3200.0)*1000000)/(timeNewL - timeOldL);
   encPositionL = (float(encCountL)*2.0*PI)/3200.0; // Convert encoder count to angle in radians
-  angVelL = ((encPositionL - encPositionOldL)*1000000) / (timeNewL - timeOldL);
+//   angVelL = ((encPositionL - encPositionOldL)*1000000) / (timeNewL - timeOldL);
+//   encPositionL = (float(encCountL)*2.0*PI)/3200.0; // Convert encoder count to angle in radians
+//   angVelL = ((encPositionL - encPositionOldL)*1000000) / (timeNewL - timeOldL);
   v_l = r * angVelL;
   timeOldL = timeNewL;
-  encPositionOldL = encPositionL;
+//   encPositionOldL = encPositionL;
+totalCountLOld = totalCountL;
 }
 
 

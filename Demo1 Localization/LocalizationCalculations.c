@@ -29,11 +29,10 @@ float error_past = 0.0; // Globals to keep track of integral and error for the P
 float desiredAngle = 0.0; // Angle in radians that is sent from raspi
 
 long startTime; // Used to keep track of the number of microseconds that the main loop has been running for
-long period = 10000; // Set the period for running the PI controller to 10ms (10000us)
+long period = 5000; // Set the period for running the PI controller to 10ms (10000us)
 long Ts = 0; 
 long Tc; // Used to keep track of the number of microseconds since last PI control
-
-
+Va
 //variables below measured or calculated inside encoder ISRs **************************************************
 int encCountR = 0; // The count of the encoder
 int encCountL = 0;
@@ -107,8 +106,6 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENC_RA), encoderISR_R, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENC_LA), encoderISR_L, CHANGE);
   
-
-
   Wire.begin(SLAVE_ADDR); // Start listening for I2C
   Wire.onReceive(receiveQuad); // Interrupt handler for I2C input
 }
@@ -119,9 +116,7 @@ void loop() {
   timeNew = micros(); //start time for loop to calcualte x and y position
   PDControl();
   PControl(); // Run the PI control logic
-  while(micros() < startTime + period){ // Wait until 10ms has passed since the start of main loop
-    
-  }
+  
   rotPosition = r * (((rolloverR * 2 * PI)+encPositionR) - ((rolloverL * 2* PI)+encPositionL)) / d;  //rollover calculation for the left wheel not checked yet, check if error occurs
   rolloverCar = rotPosition / (2*PI); //counts number of rollovers that occurred for the car if necessary for any calculations
 
@@ -146,16 +141,17 @@ void loop() {
   yPos = yPos + (yVel*(timeNew - timeOld)/1000000);
 
   //code below was used to check position variables. can comment out
-  Serial.print(timeNew/1000000.0);
-  Serial.print("\t");
-  Serial.print(rotPosition);
-  Serial.print("\t");
-  Serial.print(xPos);
-  Serial.print("\t");
-  Serial.println(yPos);
-
+  // Serial.print(timeNew/1000000.0);
+  // Serial.print("\t");
+  // Serial.print(rotPosition);
+  // Serial.print("\t");
+  // Serial.print(xPos);
+  // Serial.print("\t");
+  // Serial.println(yPos);
+  while(micros() < startTime + period){ // Wait until 10ms has passed since the start of main loop
+    
+  }
   timeOld = timeNew;
-  delay(100); //delaying main loop for testing position variables. can comment out 
 }
 
 void PDControl(){ // Outer control loop (calculating the desired turning rate phi dot sub d)
@@ -183,8 +179,21 @@ void PControl(){ // Inner control loop (caculating delta V sub a and V bar sub a
   float Va1 = (magVa + deltaVa) / 2.0;
   float Va2 = (magVa - deltaVa) / 2.0;
   // Need to constrain values and make sure the correct direction is set (+ vs -)
-  analogWrite(M1_PWM, 255 * int(Va1));
-  analogWrite(M2_PWM, 255 * int(Va2));
+  if(Va1 > 0){
+    digitalWrite(M1_DIR, HIGH);
+    analogWrite(M1_PWM, (Va1 / 5.0) * 255);
+  }else{
+    digitalWrite(M1_DIR, LOW);
+    analogWrite(M1_PWM, -1*(Va1 / 5.0) * 255);
+  }
+
+  if(Va2 > 0){
+    digitalWrite(M2_DIR, HIGH);
+    analogWrite(M2_PWM, (Va2 / 5.0) * 255);
+  }else{
+    digitalWrite(M2_DIR, LOW);
+    analogWrite(M2_PWM, -1*(Va2 / 5.0) * 255);
+  }
 }
 
 void encoderISR_R(){
@@ -194,6 +203,7 @@ void encoderISR_R(){
   timeNewR = micros();
   if(encAStatusR == encBStatusR){ // Since the ISR is invoked by encoder a changing, we can just check if a = b
     encCountR += 2; // Increase count by 2 since the encoder has moved 2 clicks CCW
+    totalCountR +=2;
     if(encCountR == 3202){
       encCountR = 2; // If the encoder is at its max, rollover to 0
       rolloverR += 1;
@@ -201,6 +211,7 @@ void encoderISR_R(){
     
   }else{ // encAStatus != encBStatus
     encCountR -= 2; // Decrease count by 2 since encoder has moved 2 clicks CW
+    totalCountR -= 2;
     if(encCountR == -2) {
       encCountR = 3198; // If encoder is at its minimum, rollover to 3200
       rolloverR -= 1;
@@ -208,10 +219,12 @@ void encoderISR_R(){
     
   }
   encPositionR = (float(encCountR)*2.0*PI)/3200.0; // Convert encoder count to angle in radians
-  angVelR = ((encPositionR - encPositionOldR)*1000000) / (timeNewR - timeOldR);
+  angVelR = (float(totalCountR - totalCountROld)*((2.0*PI)/3200.0)*1000000)/(timeNewR - timeOldR);
+//   angVelR = ((encPositionR - encPositionOldR)*1000000) / (timeNewR - timeOldR);
   v_r = r * angVelR;
   timeOldR = timeNewR;
-  encPositionOldR = encPositionR;
+//   encPositionOldR = encPositionR;
+    totalCountROld = totalCountR;
 }
 
 void encoderISR_L(){
@@ -221,22 +234,28 @@ void encoderISR_L(){
   timeNewL = micros();
   if(encAStatusL == encBStatusL){ // Since the ISR is invoked by encoder a changing, we can just check if a = b
     encCountL -= 2; // Decrease count by 2 since encoder has moved 2 clicks CW
+    totalCountL -= 2;
     if(encCountL == -2){
       encCountL = 3198; // If encoder is at its minimum, rollover to 3200
       rolloverL -= 1;
     }
   }else{ // encAStatus != encBStatus
     encCountL += 2; // Increase count by 2 since the encoder has moved 2 clicks CCW
+    totalCountL += 2;
     if(encCountL == 3202){
       encCountL = 2; // If the encoder is at its max, rollover to 0
       rolloverL += 1;
     }
   }
+  angVelL = (float(totalCountL - totalCountLOld)*((2.0*PI)/3200.0)*1000000)/(timeNewL - timeOldL);
   encPositionL = (float(encCountL)*2.0*PI)/3200.0; // Convert encoder count to angle in radians
-  angVelL = ((encPositionL - encPositionOldL)*1000000) / (timeNewL - timeOldL);
+//   angVelL = ((encPositionL - encPositionOldL)*1000000) / (timeNewL - timeOldL);
+//   encPositionL = (float(encCountL)*2.0*PI)/3200.0; // Convert encoder count to angle in radians
+//   angVelL = ((encPositionL - encPositionOldL)*1000000) / (timeNewL - timeOldL);
   v_l = r * angVelL;
   timeOldL = timeNewL;
-  encPositionOldL = encPositionL;
+//   encPositionOldL = encPositionL;
+totalCountLOld = totalCountL;
 }
 
 
@@ -255,3 +274,5 @@ void serialEvent(){
     // TODO add code to add current rotation to the new desired rotation
   }
 }
+
+//pwm = v/5 * 255
