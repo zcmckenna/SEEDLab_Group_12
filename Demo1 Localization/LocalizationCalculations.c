@@ -260,19 +260,16 @@ totalCountLOld = totalCountL;
 
 
 void receiveQuad(int byteCount){
-  byte currentQuad; // Initalize variable to hold new set position from I2C
+  int i; // Initalize variable to hold new set position from I2C
   while(Wire.available()){ // While the arduino is still getting data over I2C
-    currentQuad = Wire.read(); // Set the current quad byte to the byte that was sent over I2C
+    i = Wire.read(); // Set the current quad byte to the byte that was sent over I2C
   }
-  desiredAngle = ((double(currentQuad) - 1.0)*(PI/2.0)); // Simple equation to convert from quadrant (1,2,3, or 4) to radians (0pi, pi/2, pi, or 3pi/2)
+  desiredAngle = ((float(i)/180)*2.0*PI) + rotPosition; // Simple equation to convert from quadrant (1,2,3, or 4) to radians (0pi, pi/2, pi, or 3pi/2)
 }
 
 void serialEvent(){
   while(Serial.available() > 0){
-    float i = Serial.parseFloat();
-    desiredAngle = i + rotPosition;
-    // TODO add code to add current rotation to the new desired rotation
+    int i = Serial.read();
+    desiredAngle = ((float(i)/180)*2.0*PI) + rotPosition;
   }
 }
-
-//pwm = v/5 * 255
