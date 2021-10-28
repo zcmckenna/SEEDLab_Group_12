@@ -8,9 +8,9 @@
 #define M2_PWM 10
 #define MOTOR_EN 4 // Definitions for the pins that correspond to motor control
 
-#define ENC_RA 3 // yellow, pins 3 and 5 for right wheel encoder
+#define ENC_RA 2 // yellow, pins 3 and 5 for right wheel encoder
 #define ENC_RB 5 // white  Definitions for encoder channels and reset buttons
-#define ENC_LA 2 //yellow, pins 2 and 6 for left wheel encoder
+#define ENC_LA 3 //yellow, pins 2 and 6 for left wheel encoder
 #define ENC_LB 6 //white
 
 #define rhoK 0.253733882698412
