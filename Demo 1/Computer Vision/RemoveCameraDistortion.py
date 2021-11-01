@@ -1,6 +1,6 @@
 """
 Taran Soden (Team 12 CV)
-SEED Lab - Fall 2021
+EENG 350 - Seed Lab (Fall 2021)
 Remove Camera Distortion and Camera Matrix Setup
 """
 import numpy as np
@@ -29,7 +29,7 @@ def remove_distortion(image, showComparison):
     
     dst = cv.undistort(image, mtx, dist, None, newcameramtx) # undistort
 
-    x,y,w,h = roi           # define nww region of interest (ROI)
+    x,y,w,h = roi           # define new region of interest (ROI)
     dst = dst[y:y+h, x:x+w] # crop the adjusted image
     
     # original image and new image can be shown if requested

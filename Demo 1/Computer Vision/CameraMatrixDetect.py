@@ -1,9 +1,9 @@
 """
 Taran Soden (Team 12 CV)
-SEED Lab - Fall 2021
+EENG 350 - Seed Lab (Fall 2021)
 Camera Matrix Detection (USING CHESSBOARD)
 
-Requires x images in .jpg format in the same file directory to function
+Requires x images in .jpg format in the same file directory to function (at least 10 for best measurement)
 
 """
 

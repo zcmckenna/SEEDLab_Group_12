@@ -1,6 +1,6 @@
 """ 
 Taran Soden (CV, Team 12)
-EENG 350 - Seed Lab Fall 2021
+EENG 350 - Seed Lab (Fall 2021)
 Take 12 Pictures
 
 Function: Takes 12 pictures in a row at a set calibration
