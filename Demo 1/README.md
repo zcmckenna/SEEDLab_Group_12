@@ -11,4 +11,4 @@ The purpose of this demo is to start to merge and integrate the different subsys
 * `Computer Vision/` - The directory containing all the computer vision code. 
 * `Localization/` - The directory containing all the code for localization.
 * `Localization/localizationCalculations.c` - The c code that runs on the Arduino, it includes the encoder code, PID control, and velocity calculations.
-
+* `Localization/stepRespCode.c` - The c code that runs on the Arduino, it contains the code to run the step response experiments.
