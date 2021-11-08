@@ -12,7 +12,12 @@
 #define trackWidth 0.283 // The distance between the wheels in m
 #define wheelRadius 0.074 // The radius of the wheels in m
 
-#define Period 5000 // The delay time for the main loop in us (5ms)
+#define period 5000 // The delay time for the main loop in us (5ms)
+
+#define sumKp 1
+#define sumKi 1
+#define diffKp 1
+#define diffKi 1
 
 float angVelR;
 float angVelL;
@@ -24,6 +29,18 @@ long encoderCountR;
 long encoderCountL;
 long prevEncoderCountR;
 long prevEncoderCountL;
+
+float voltageSum; // V bar sub a
+float sumIntegral = 0;
+float sumOutput;
+float voltageDiff; // Delta V sub a
+float diffIntegral = 0;
+float diffOutput;
+
+float forwardVelocitySet;
+float forwardVelocity;
+float rotationalVelocity;
+float rotationalVelocitySet;
 
 void setup(){
     Serial.begin(2000000);
@@ -49,7 +66,35 @@ void setup(){
 }
 
 void loop(){
+    long startTime = micros(); // Get the micros at the start of the main loop
+    forwardVelocity = wheelRadius * ((angVelR + angVelL) / 2.0);
+    rotationalVelocity = wheelRadius * ((angVelR - angVelL) / trackWidth);
+    sumPIControl();
+    diffPIControl();
+    float voltageR = (sumOutput + diffOutput) / 2;
+    float voltageL = (sumOutput - diffOutput) / 2;
+    if(voltageR >= 0) digitalWrite(M1_DIR, HIGH);
+    else digitalWrite(M1_DIR, LOW);
+    if(voltageL >= 0) digitalWrite(M2_DIR, HIGH);
+    else digitalWrite(M2_DIR, HIGH);
+    analogWrite(M1_PWM, constrain(abs(voltageR), 0, 255));
+    analogWrite(M2_PWM, constrain(abs(voltageL), 0, 255));
+    while(micros() < startTime + period); // Delay for the rest of the period
+}
 
+void sumPIControl(){
+    float error = forwardVelocitySet -  forwardVelocity;
+    float proportional = error;
+    sumIntegral = sumIntegral + error * (period / 1000000.0);
+    sumOutput = sumKp * proportional + sumKi * sumIntegral;
+
+}
+
+void diffPIControl(){
+    float error = rotationalVelocitySet -  rotationalVelocity;
+    float proportional = error;
+    diffIntegral = diffIntegral + error * (period / 1000000.0);
+    diffOutput = diffKp * proportional + diffKi * diffIntegral;
 }
 
 void encoderISR_R(){
@@ -65,7 +110,7 @@ void encoderISR_L(){
     if(digitalRead(ENC_LA) == digitalRead(ENC_LB))encoderCountL += 2;
     else encoderCountL -= 2;
     
+    angVelL = (float(encoderCountL - prevEncoderCountL)*((2.0*PI)/3200.0)*1000000)/(micros() - isrTimeL);
     isrTimeL = micros();
-    angVelR = (float(encoderCountL - prevEncoderCountL)*((2.0*PI)/3200.0)*1000000)/(micros() - isrTimeL);
     prevEncoderCountL = encoderCountL;
 }
