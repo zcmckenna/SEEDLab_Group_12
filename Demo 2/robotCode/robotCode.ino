@@ -41,6 +41,8 @@ float forwardVelocitySet = 0.3;
 float forwardVelocity;
 float rotationalVelocity;
 float rotationalVelocitySet;
+float rotationalPosition;
+
 
 void setup(){
     Serial.begin(2000000);
@@ -67,6 +69,7 @@ void setup(){
 
 void loop(){
     long startTime = micros(); // Get the micros at the start of the main loop
+    rotationalPosition = wheelRadius * (float(encoderCountR)*((2.0*PI)/3200.0) - float(encoderCountL)*((2.0*PI)/3200.0)) / trackWidth;
     forwardVelocity = wheelRadius * ((angVelR + angVelL) / 2.0);
     rotationalVelocity = wheelRadius * ((angVelR - angVelL) / trackWidth);
     sumPIControl();
