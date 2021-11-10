@@ -14,10 +14,10 @@
 
 #define period 5000 // The delay time for the main loop in us (5ms)
 
-#define sumKp 1
-#define sumKi 1
-#define diffKp 1
-#define diffKi 1
+#define sumKp 15
+#define sumKi 0.5
+#define diffKp 10
+#define diffKi 0.5
 
 float angVelR;
 float angVelL;
@@ -37,7 +37,7 @@ float voltageDiff; // Delta V sub a
 float diffIntegral = 0;
 float diffOutput;
 
-float forwardVelocitySet;
+float forwardVelocitySet = 0.3;
 float forwardVelocity;
 float rotationalVelocity;
 float rotationalVelocitySet;
@@ -57,7 +57,7 @@ void setup(){
 
     digitalWrite(MOTOR_EN, HIGH); // Enable the motor controller
     digitalWrite(M1_DIR, HIGH);
-    digitalWrite(M2_DRI, HIGH); // Set the initial motor directions as CCW
+    digitalWrite(M2_DIR, HIGH); // Set the initial motor directions as CCW
 
     attachInterrupt(digitalPinToInterrupt(ENC_RA), encoderISR_R, CHANGE);
     attachInterrupt(digitalPinToInterrupt(ENC_LA), encoderISR_L, CHANGE);
@@ -85,7 +85,7 @@ void loop(){
 void sumPIControl(){
     float error = forwardVelocitySet -  forwardVelocity;
     float proportional = error;
-    sumIntegral = sumIntegral + error * (period / 1000000.0);
+    sumIntegral = sumIntegral + error * (period / 1000.0);
     sumOutput = sumKp * proportional + sumKi * sumIntegral;
 
 }
@@ -93,7 +93,7 @@ void sumPIControl(){
 void diffPIControl(){
     float error = rotationalVelocitySet -  rotationalVelocity;
     float proportional = error;
-    diffIntegral = diffIntegral + error * (period / 1000000.0);
+    diffIntegral = diffIntegral + error * (period / 1000.0);
     diffOutput = diffKp * proportional + diffKi * diffIntegral;
 }
 
@@ -107,8 +107,8 @@ void encoderISR_R(){
 }
 
 void encoderISR_L(){
-    if(digitalRead(ENC_LA) == digitalRead(ENC_LB))encoderCountL += 2;
-    else encoderCountL -= 2;
+    if(digitalRead(ENC_LA) == digitalRead(ENC_LB))encoderCountL -= 2;
+    else encoderCountL += 2;
     
     angVelL = (float(encoderCountL - prevEncoderCountL)*((2.0*PI)/3200.0)*1000000)/(micros() - isrTimeL);
     isrTimeL = micros();
