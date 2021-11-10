@@ -107,8 +107,8 @@ void encoderISR_R(){
 }
 
 void encoderISR_L(){
-    if(digitalRead(ENC_LA) == digitalRead(ENC_LB))encoderCountL += 2;
-    else encoderCountL -= 2;
+    if(digitalRead(ENC_LA) == digitalRead(ENC_LB))encoderCountL -= 2;
+    else encoderCountL += 2;
     
     angVelL = (float(encoderCountL - prevEncoderCountL)*((2.0*PI)/3200.0)*1000000)/(micros() - isrTimeL);
     isrTimeL = micros();
