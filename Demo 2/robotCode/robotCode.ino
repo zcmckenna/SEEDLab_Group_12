@@ -21,9 +21,9 @@
 #define sumKp 15
 #define sumKi 0.5
 #define diffKp 10
-#define diffKi 0.5
+#define diffKi 0.5 // Inner 
 #define angKp 1
-#define angKi 0.00001
+#define angKi 0.00001 // Outer rotational PI control gains
 
 float angVelR;
 float angVelL;
@@ -91,12 +91,23 @@ void loop(){
       switch(stateData[0]){ // 1: feedback forward, 3: Straight forward, 0: search initially, or stop when it gets sent again
         case 0: //search or stop
           if(!searchComplete){
-            rotationalVelocitySet = 0.75;
+            if(stateData[1] == 0){
+              rotationalVelocitySet = 0.60;
+            }else if(stateData[1] != 0){
+              rotationalVelocitySet = -0.60;
+            }
             searching = true;
           }else{
             rotationalVelocitySet = 0.0;
             forwardVelocitySet = 0.0;
+            analogWrite(M1_PWM, 0);
+            analogWrite(M2_PWM, 0);
+            digitalWrite(M1_DIR, LOW);
+            digitalWrite(M2_DIR, LOW);
+            delay(200);
             digitalWrite(MOTOR_EN, LOW);
+            digitalWrite(M1_DIR, HIGH);
+            digitalWrite(M2_DIR, HIGH);
           }
           break;
 
@@ -105,7 +116,7 @@ void loop(){
           searchComplete = true;
           searching = false;
           rotationalVelocitySet = 0.0;
-          forwardVelocitySet = 0.4;
+          forwardVelocitySet = 0.6;
           break;
 
         case 3:
@@ -113,7 +124,7 @@ void loop(){
           searchComplete = true;
           searching = false;
           rotationalVelocitySet = 0.0;
-          forwardVelocitySet = 0.4;
+          forwardVelocitySet = 0.6;
           break;
       }
     }
@@ -149,7 +160,7 @@ void diffPIControl(){
     float angProportional = angError;
     angIntegral = angIntegral + angError * (period / 1000.0);
     if(!searching)rotationalVelocitySet = angKp * angProportional + angKi * angIntegral;
-    constrain(rotationalVelocitySet, -3.0, 3.0);
+    constrain(rotationalVelocitySet, -3.1, 3.1);
     float error = rotationalVelocitySet -  rotationalVelocity;
     float proportional = error;
     diffIntegral = diffIntegral + error * (period / 1000.0);
