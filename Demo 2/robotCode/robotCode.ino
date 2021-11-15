@@ -22,6 +22,8 @@
 #define sumKi 0.5
 #define diffKp 10
 #define diffKi 0.5
+#define angKp 1
+#define angKi 0.00001
 
 float angVelR;
 float angVelL;
@@ -39,17 +41,24 @@ float sumIntegral = 0;
 float sumOutput;
 float voltageDiff; // Delta V sub a
 float diffIntegral = 0;
+float angIntegral = 0;
 float diffOutput;
 
-float forwardVelocitySet = 0.3;
+float forwardVelocitySet;
 float forwardVelocity;
 float rotationalVelocity;
 float rotationalVelocitySet;
 float rotationalPosition;
 
-//int state;
-float stateData[3];
+float desiredAngle;
 
+bool searchComplete = false;
+bool fullStop = false;
+bool searching = false;
+
+//int state;
+int stateData[3] = {6,6,6};
+int previousState = 6;
 
 void setup(){
     Serial.begin(2000000);
@@ -78,6 +87,39 @@ void setup(){
 
 void loop(){
     long startTime = micros(); // Get the micros at the start of the main loop
+    if(stateData[0] != previousState){
+      switch(stateData[0]){ // 1: feedback forward, 3: Straight forward, 0: search initially, or stop when it gets sent again
+        case 0: //search or stop
+          if(!searchComplete){
+            rotationalVelocitySet = 0.75;
+            searching = true;
+          }else{
+            rotationalVelocitySet = 0.0;
+            forwardVelocitySet = 0.0;
+            digitalWrite(MOTOR_EN, LOW);
+          }
+          break;
+
+        case 1: //Move forward with feedback
+          digitalWrite(MOTOR_EN, HIGH);
+          searchComplete = true;
+          searching = false;
+          rotationalVelocitySet = 0.0;
+          forwardVelocitySet = 0.4;
+          break;
+
+        case 3:
+          digitalWrite(MOTOR_EN, HIGH);
+          searchComplete = true;
+          searching = false;
+          rotationalVelocitySet = 0.0;
+          forwardVelocitySet = 0.4;
+          break;
+      }
+    }
+    if(stateData[0] == 1 || stateData[0] == 3){
+      desiredAngle = ((float(stateData[2])/180.0)*PI) + rotationalPosition;
+    }
     rotationalPosition = wheelRadius * (float(encoderCountR)*((2.0*PI)/3200.0) - float(encoderCountL)*((2.0*PI)/3200.0)) / trackWidth;
     forwardVelocity = wheelRadius * ((angVelR + angVelL) / 2.0);
     rotationalVelocity = wheelRadius * ((angVelR - angVelL) / trackWidth);
@@ -103,6 +145,11 @@ void sumPIControl(){
 }
 
 void diffPIControl(){
+    float angError = desiredAngle - rotationalPosition;
+    float angProportional = angError;
+    angIntegral = angIntegral + angError * (period / 1000.0);
+    if(!searching)rotationalVelocitySet = angKp * angProportional + angKi * angIntegral;
+    constrain(rotationalVelocitySet, -3.0, 3.0);
     float error = rotationalVelocitySet -  rotationalVelocity;
     float proportional = error;
     diffIntegral = diffIntegral + error * (period / 1000.0);
@@ -128,51 +175,14 @@ void encoderISR_L(){
 }
 
 
-void receiveState(int byteCount){ 
+void receiveState(int byteCount){
+  Wire.read();
   for(int i=0; i<3; i++){
     stateData[i] = Wire.read();
-    Serial.println(stateData[i]);  
+    if(i == 2){
+      stateData[2] *= pow(-1, stateData[1]);
+    }
   }
+  Serial.println("[" + String(stateData[0]) + ", " + String(stateData[1]) + ", " + String(stateData[2]) + "]");
+  
 }
-/*
-
-void receiveState(int byteCount){
-  int i; // Initalize variable to hold new set position from I2C
-  while(Wire.available()){ // While the arduino is still getting data over I2C
-    i = Wire.read(); // Set the current quad byte to the byte that was sent over I2C
-  }
-  state = i;
-} */
-
-
-/* Switch statement for line detection
-switch(stateData[0]){
-      case 0:
-        if(stateData[1] == 0){
-          //seach for tape
-        }
-        else rotationalVelocitySet = -0.1; //turn car to the right, rotate CW?
-        break;
-      case 1:
-        if(stateData[1] == 0) rotationalVelocitySet = 0.1; //turn car to the left, rotate CCW
-        else rotationalVelocitySet = 0.0; //stop adjusting when car is centered on line
-        break;
-    }
-*/
-
-/*
-switch(state){
-      case 1: //robot doesn't see tape, rotate to search
-        rotationalVelocitySet = 7.5;
-        forwardVelocitySet = 0.0;
-      break;
-      case 2: //robot sees tape, move forward
-        rotationalVelocitySet = 0.0;
-        forwardVelocitySet = 0.5;
-      break;
-      case 3: //robot at tape, stop moving
-        rotationalVelocitySet = 0.0;
-        forwardVelocitySet = 0.0;
-      break;
-    }
-*/
