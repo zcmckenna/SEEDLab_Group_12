@@ -34,7 +34,7 @@ long isrTimeL;
 long encoderCountR;
 long encoderCountL;
 long prevEncoderCountR;
-long prevEncoderCountL;
+long prevEncoderCountL; // Keep track of encoder counts for velocity calculations
 
 float voltageSum; // V bar sub a
 float sumIntegral = 0;
@@ -48,17 +48,17 @@ float forwardVelocitySet;
 float forwardVelocity;
 float rotationalVelocity;
 float rotationalVelocitySet;
-float rotationalPosition;
+float rotationalPosition; // Set points and current values for different localization properties
 
 float desiredAngle;
 
 bool searchComplete = false;
 bool fullStop = false;
-bool searching = false;
+bool searching = false; // Bools for the state machine
 
 //int state;
 int stateData[3] = {6,6,6};
-int previousState = 6;
+int previousState = 6; // Keep track of the state
 
 void setup(){
     Serial.begin(2000000);
@@ -82,7 +82,6 @@ void setup(){
 
     Wire.begin(SLAVE_ADDR); // Start listening for I2C
     Wire.onReceive(receiveState); // Interrupt handler for I2C input
-    // TODO: initialize I2C stuff
 }
 
 void loop(){
@@ -96,18 +95,18 @@ void loop(){
             }else if(stateData[1] != 0){
               rotationalVelocitySet = -0.60;
             }
-            searching = true;
-          }else{
+            searching = true; // Start the search either clockwise or counterclockwise
+          }else{ // If the search has already ocurred, stop the robot when a 0 is received
             rotationalVelocitySet = 0.0;
             forwardVelocitySet = 0.0;
             analogWrite(M1_PWM, 0);
             analogWrite(M2_PWM, 0);
             digitalWrite(M1_DIR, LOW);
-            digitalWrite(M2_DIR, LOW);
+            digitalWrite(M2_DIR, LOW); // Invert motor direction to quickly stop the robot
             delay(200);
             digitalWrite(MOTOR_EN, LOW);
             digitalWrite(M1_DIR, HIGH);
-            digitalWrite(M2_DIR, HIGH);
+            digitalWrite(M2_DIR, HIGH); // Disable motor and resotre forward direction
           }
           break;
 
@@ -125,29 +124,29 @@ void loop(){
           searching = false;
           rotationalVelocitySet = 0.0;
           forwardVelocitySet = 0.6;
-          break;
+          break; // Both cases take constant feedback from the camera and put values into the rotational PI controller
       }
     }
     if(stateData[0] == 1 || stateData[0] == 3){
       desiredAngle = ((float(stateData[2])/180.0)*PI) + rotationalPosition;
-    }
+    } // Get data from the PI controller and set the desired angle
     rotationalPosition = wheelRadius * (float(encoderCountR)*((2.0*PI)/3200.0) - float(encoderCountL)*((2.0*PI)/3200.0)) / trackWidth;
     forwardVelocity = wheelRadius * ((angVelR + angVelL) / 2.0);
-    rotationalVelocity = wheelRadius * ((angVelR - angVelL) / trackWidth);
+    rotationalVelocity = wheelRadius * ((angVelR - angVelL) / trackWidth); // Calculations for the robots current positions and velocities from the encoders
     sumPIControl();
-    diffPIControl();
+    diffPIControl(); // Run the v bar sub a and delta v sub a PI control functions
     float voltageR = (sumOutput + diffOutput) / 2;
-    float voltageL = (sumOutput - diffOutput) / 2;
+    float voltageL = (sumOutput - diffOutput) / 2; // Set the voltages based on the PI control otputs
     if(voltageR >= 0) digitalWrite(M1_DIR, HIGH);
-    else digitalWrite(M1_DIR, LOW);
+    else digitalWrite(M1_DIR, LOW); // Set motor direction to forward or backward depending on the voltage output
     if(voltageL >= 0) digitalWrite(M2_DIR, HIGH);
-    else digitalWrite(M2_DIR, LOW);
+    else digitalWrite(M2_DIR, LOW); // Set motor direction to forward or backward depending on the voltage output
     analogWrite(M1_PWM, constrain(abs(voltageR), 0, 255));
     analogWrite(M2_PWM, constrain(abs(voltageL), 0, 255));
     while(micros() < startTime + period); // Delay for the rest of the period
 }
 
-void sumPIControl(){
+void sumPIControl(){ // PI control that tries to match the velocity of the left and right wheel so it runs in a straight line
     float error = forwardVelocitySet -  forwardVelocity;
     float proportional = error;
     sumIntegral = sumIntegral + error * (period / 1000.0);
@@ -155,19 +154,19 @@ void sumPIControl(){
 
 }
 
-void diffPIControl(){
+void diffPIControl(){ // An inner and outer control loop that manages the rotation of the robot
     float angError = desiredAngle - rotationalPosition;
     float angProportional = angError;
     angIntegral = angIntegral + angError * (period / 1000.0);
     if(!searching)rotationalVelocitySet = angKp * angProportional + angKi * angIntegral;
-    constrain(rotationalVelocitySet, -3.1, 3.1);
+    constrain(rotationalVelocitySet, -3.1, 3.1); // The outer loop controls the current rotational position and tries to match it to the set rotational position
     float error = rotationalVelocitySet -  rotationalVelocity;
     float proportional = error;
     diffIntegral = diffIntegral + error * (period / 1000.0);
-    diffOutput = diffKp * proportional + diffKi * diffIntegral;
+    diffOutput = diffKp * proportional + diffKi * diffIntegral; // The inner loop controls the rotation of the robot and tries to maintain a rotational velocity
 }
 
-void encoderISR_R(){
+void encoderISR_R(){ // Encoder ISR for the right wheel that keeps track of the total counts
     if(digitalRead(ENC_RA) == digitalRead(ENC_RB))encoderCountR += 2;
     else encoderCountR -= 2;
 
@@ -176,7 +175,7 @@ void encoderISR_R(){
     prevEncoderCountR = encoderCountR;
 }
 
-void encoderISR_L(){
+void encoderISR_L(){ // Encoder ISR for the left wheel that keeps track of the total counts
     if(digitalRead(ENC_LA) == digitalRead(ENC_LB))encoderCountL -= 2;
     else encoderCountL += 2;
     
@@ -186,7 +185,7 @@ void encoderISR_L(){
 }
 
 
-void receiveState(int byteCount){
+void receiveState(int byteCount){ // Get data from i2c
   Wire.read();
   for(int i=0; i<3; i++){
     stateData[i] = Wire.read();
