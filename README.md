@@ -10,3 +10,4 @@ The purpose of this repository is to store, version control, and track our progr
 ### Contents
 * `Miniproject/README.md` - The README for all of our mini project documentation.
 * `Demo 1/README.md` - The README for all of our demo 1 documentation.
+* `Demo 2/README.md` - The README for all of our demo 2 documentation.
