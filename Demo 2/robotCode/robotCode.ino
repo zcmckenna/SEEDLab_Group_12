@@ -82,6 +82,8 @@ void setup(){
 
     Wire.begin(SLAVE_ADDR); // Start listening for I2C
     Wire.onReceive(receiveState); // Interrupt handler for I2C input
+
+    Serial.println("Ready...");
 }
 
 void loop(){
@@ -89,29 +91,26 @@ void loop(){
     if(stateData[0] != previousState){
       switch(stateData[0]){ // 1: feedback forward, 3: Straight forward, 0: search initially, or stop when it gets sent again
         case 0: //search or stop
-          if(!searchComplete){
-            if(stateData[1] == 0){
-              rotationalVelocitySet = 0.60;
-            }else if(stateData[1] != 0){
-              rotationalVelocitySet = -0.60;
-            }
-            searching = true; // Start the search either clockwise or counterclockwise
-          }else{ // If the search has already ocurred, stop the robot when a 0 is received
-            rotationalVelocitySet = 0.0;
-            forwardVelocitySet = 0.0;
-            analogWrite(M1_PWM, 0);
-            analogWrite(M2_PWM, 0);
-            digitalWrite(M1_DIR, LOW);
-            digitalWrite(M2_DIR, LOW); // Invert motor direction to quickly stop the robot
-            delay(200);
-            digitalWrite(MOTOR_EN, LOW);
-            digitalWrite(M1_DIR, HIGH);
-            digitalWrite(M2_DIR, HIGH); // Disable motor and resotre forward direction
-          }
+          digitalWrite(MOTOR_EN, HIGH);
+          forwardVelocitySet = 0.0;
+          rotationalVelocitySet = 0.60;
+          break;
+
+        case -1:
+          rotationalVelocitySet = 0.0;
+          forwardVelocitySet = 0.0;
+          analogWrite(M1_PWM, 0);
+          analogWrite(M2_PWM, 0);
+          digitalWrite(M1_DIR, LOW);
+          digitalWrite(M2_DIR, LOW); // Invert motor direction to quickly stop the robot
+          delay(200);
+          digitalWrite(MOTOR_EN, LOW);
+          digitalWrite(M1_DIR, HIGH);
+          digitalWrite(M2_DIR, HIGH); // Disable motor and resotre forward direction
           break;
 
         case 1: //Move forward with feedback
-          digitalWrite(MOTOR_EN, HIGH);
+//          digitalWrite(MOTOR_EN, HIGH);
           searchComplete = true;
           searching = false;
           rotationalVelocitySet = 0.0;
@@ -119,7 +118,7 @@ void loop(){
           break;
 
         case 3:
-          digitalWrite(MOTOR_EN, HIGH);
+//          digitalWrite(MOTOR_EN, HIGH);
           searchComplete = true;
           searching = false;
           rotationalVelocitySet = 0.0;
