@@ -20,10 +20,10 @@
 
 #define sumKp 15
 #define sumKi 0.5
-#define diffKp 10
-#define diffKi 0.5 // Inner 
+#define diffKp 20
+#define diffKi 0.3 // Inner 
 #define angKp 1
-#define angKi 0.00001 // Outer rotational PI control gains
+#define angKi 0.000005 // Outer rotational PI control gains
 
 float angVelR;
 float angVelL;
@@ -91,38 +91,45 @@ void loop(){
     if(stateData[0] != previousState){
       switch(stateData[0]){ // 1: feedback forward, 3: Straight forward, 0: search initially, or stop when it gets sent again
         case 0: //search or stop
-          digitalWrite(MOTOR_EN, HIGH);
+          searching = true;
+          sumIntegral = 0;
+          analogWrite(M1_PWM, 0);
+          analogWrite(M2_PWM, 0);
           forwardVelocitySet = 0.0;
-          rotationalVelocitySet = 0.60;
+          rotationalVelocitySet = -0.6;
           break;
 
-        case -1:
+        case 4:
           rotationalVelocitySet = 0.0;
+          sumIntegral = 0;
           forwardVelocitySet = 0.0;
+          delay(200);
           analogWrite(M1_PWM, 0);
           analogWrite(M2_PWM, 0);
           digitalWrite(M1_DIR, LOW);
           digitalWrite(M2_DIR, LOW); // Invert motor direction to quickly stop the robot
-          delay(200);
+          delay(1400);
           digitalWrite(MOTOR_EN, LOW);
           digitalWrite(M1_DIR, HIGH);
           digitalWrite(M2_DIR, HIGH); // Disable motor and resotre forward direction
           break;
 
         case 1: //Move forward with feedback
-//          digitalWrite(MOTOR_EN, HIGH);
+          diffIntegral = 0;
           searchComplete = true;
           searching = false;
           rotationalVelocitySet = 0.0;
-          forwardVelocitySet = 0.6;
+          forwardVelocitySet = 0.4;
           break;
 
         case 3:
-//          digitalWrite(MOTOR_EN, HIGH);
+          diffIntegral = 0;
+          analogWrite(M1_PWM, 0);
+          analogWrite(M2_PWM, 0);
           searchComplete = true;
           searching = false;
           rotationalVelocitySet = 0.0;
-          forwardVelocitySet = 0.6;
+          forwardVelocitySet = 0.4;
           break; // Both cases take constant feedback from the camera and put values into the rotational PI controller
       }
     }
@@ -185,6 +192,7 @@ void encoderISR_L(){ // Encoder ISR for the left wheel that keeps track of the t
 
 
 void receiveState(int byteCount){ // Get data from i2c
+  previousState = stateData[0];
   Wire.read();
   for(int i=0; i<3; i++){
     stateData[i] = Wire.read();
@@ -192,6 +200,7 @@ void receiveState(int byteCount){ // Get data from i2c
       stateData[2] *= pow(-1, stateData[1]);
     }
   }
-  Serial.println("[" + String(stateData[0]) + ", " + String(stateData[1]) + ", " + String(stateData[2]) + "]");
+  
+  //Serial.println("[" + String(stateData[0]) + ", " + String(stateData[1]) + ", " + String(stateData[2]) + "]");
   
 }
